@@ -6,11 +6,8 @@ import com.zlrx.springcoroutine.demo.model.CarBody
 import com.zlrx.springcoroutine.demo.model.CarInboard
 import com.zlrx.springcoroutine.demo.model.Engine
 import com.zlrx.springcoroutine.demo.model.Screw
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.async
-import kotlinx.coroutines.newFixedThreadPoolContext
-import kotlinx.coroutines.reactive.awaitFirst
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import reactor.core.publisher.Flux
@@ -22,9 +19,8 @@ class CarAssembleService {
 
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    private val dispatcher = newFixedThreadPoolContext(3, "CarAssembleServiceDispatcher") + CoroutineName("CAR ASSEMBLE")
 
-    suspend fun buyEngineAsync() = GlobalScope.async(dispatcher) {
+    fun buyEngineMono() =
         Mono.just(Engine(100))
             .delayElement(Duration.ofSeconds(2))
             .doOnSubscribe { logger.info("buyEngineAsync - subscribed") }
@@ -34,10 +30,9 @@ class CarAssembleService {
                     logger.info("buyEngineAsync - completed")
                 }
             }
-            .awaitFirst()
-    }
 
-    suspend fun buyBatteryAsync() = GlobalScope.async(dispatcher) {
+
+    fun buyBatteryMono() =
         Mono.just(Battery(20))
             .delayElement(Duration.ofSeconds(1))
             .doOnSubscribe { logger.info("buyBatteryAsync - subscribed") }
@@ -47,10 +42,9 @@ class CarAssembleService {
                     logger.info("buyBatteryAsync - completed")
                 }
             }
-            .awaitFirst()
-    }
 
-    suspend fun buyScrewsAsync() = GlobalScope.async(dispatcher) {
+
+    fun buyScrewsFlux() =
         Flux.just(Screw(10), Screw(12), Screw(8))
             .delayElements(Duration.ofMillis(500))
             .doOnSubscribe { logger.info("buyScrewsAsync - subscribed") }
@@ -60,13 +54,10 @@ class CarAssembleService {
                     logger.info("buyScrewsAsync - completed")
                 }
             }
-            .collectList()
-            .awaitFirst()
-    }
 
-    suspend fun produceCarBodyAsync() = GlobalScope.async(dispatcher) {
+    fun produceCarBodyMono() =
         Mono.just(CarBody(700))
-            .delayElement(Duration.ofMillis(1500))
+            .delayElement(Duration.ofMillis(4000))
             .doOnSubscribe { logger.info("produceCarBodyAsync - subscribed") }
             .doOnNext { logger.info("produceCarBodyAsync - $it") }
             .doOnEach {
@@ -74,12 +65,11 @@ class CarAssembleService {
                     logger.info("produceCarBodyAsync - completed")
                 }
             }
-            .awaitFirst()
-    }
 
-    suspend fun assembleEngineWithBatteryAsync(engine: Engine, battery: Battery, screws: List<Screw>) = GlobalScope.async(dispatcher) {
+
+    fun assembleEngineWithBatteryMono(engine: Engine, battery: Battery, screws: List<Screw>) =
         Mono.just(CarInboard(engine, battery, screws))
-            .delayElement(Duration.ofMillis(500))
+            .delayElement(Duration.ofMillis(2500))
             .doOnSubscribe { logger.info("assembleEngineWithBatteryAsync - subscribed") }
             .doOnNext { logger.info("assembleEngineWithBatteryAsync - $it") }
             .doOnEach {
@@ -87,10 +77,8 @@ class CarAssembleService {
                     logger.info("assembleEngineWithBatteryAsync - completed")
                 }
             }
-            .awaitFirst()
-    }
 
-    suspend fun assembleCar(carBody: CarBody, carInboard: CarInboard) =
+    fun assembleCarMono(carBody: CarBody, carInboard: CarInboard) =
         Mono.just(Car(carBody, carInboard))
             .delayElement(Duration.ofMillis(500))
             .doOnSubscribe { logger.info("assembleCar - subscribed") }
@@ -101,5 +89,49 @@ class CarAssembleService {
                 }
             }
 
+
+    suspend fun assembleCarAsync(carBody: CarBody, carInboard: CarInboard): Car {
+        delay(500)
+        logger.info("Emmit Car")
+        return Car(carBody, carInboard)
+    }
+
+    suspend fun buyScrewsFlow() = flow {
+        delay(500)
+        logger.info("emmit screw 1")
+        emit(Screw(10))
+
+        delay(500)
+        logger.info("emmit screw 2")
+        emit(Screw(12))
+
+        delay(500)
+        logger.info("emmit screw 3")
+        emit(Screw(8))
+    }
+
+    suspend fun buyEngineAsync(): Engine {
+        delay(2000)
+        logger.info("Emmit engine")
+        return Engine(100)
+    }
+
+    suspend fun buyBatteryAsync(): Battery {
+        delay(1000)
+        logger.info("Emmit battery")
+        return Battery(20)
+    }
+
+    suspend fun produceCarBodyAsync(): CarBody {
+        delay(4000)
+        logger.info("Emmit carbody")
+        return CarBody(700)
+    }
+
+    suspend fun assembleEngineWithBatteryAsync(engine: Engine, battery: Battery, screws: List<Screw>): CarInboard {
+        delay(2500)
+        logger.info("Emmit CarInboard")
+        return CarInboard(engine, battery, screws)
+    }
 
 }
